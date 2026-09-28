@@ -10,13 +10,15 @@ all-features = true
 targets      = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [dependencies]
-eframe = { version = "0.36.0", features = ["persistence"] }
-egui   = "0.36.0"
-log    = "0.4.27"
+rovapi-models = { git = "https://github.com/darkwater/rovapi" }
 
-# You only need serde if you want app persistence:
-serde   = { version = "1.0.219", features = ["derive"] }
-walkers = "0.60.0"
+eframe    = { version = "0.36.0", features = ["persistence"] }
+egui      = "0.36.0"
+ehttp     = { version = "0.7.1", features = ["json"] }
+geo-types = "0.7.20"
+log       = "0.4.27"
+serde     = { version = "1.0.219", features = ["derive"] }
+walkers   = "0.60.0"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -106,7 +108,6 @@ return_and_then                     = "warn"
 set_contains_or_insert              = "warn"
 single_option_map                   = "warn"
 str_to_string                       = "warn"
-string_add                          = "warn"
 string_lit_as_bytes                 = "warn"
 string_lit_chars_any                = "warn"
 suspicious_command_arg_space        = "warn"

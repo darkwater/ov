@@ -1,28 +1,40 @@
-use egui::Context;
+mod stops;
+
+use egui::{Context, Vec2};
+use geo_types::{Coord, Rect};
 use walkers::{HttpTiles, Map, MapMemory, lat_lon, sources::OpenStreetMap};
 
+use self::stops::StopsPlugin;
+use crate::app::db::Database;
+
 pub struct MapView {
-    tiles: HttpTiles,
-    map_memory: MapMemory,
+    pub tiles: HttpTiles,
+    pub memory: MapMemory,
+    pub last_rect: Rect,
 }
 
 impl MapView {
     pub fn new(egui_ctx: Context) -> Self {
         Self {
             tiles: HttpTiles::new(OpenStreetMap, egui_ctx),
-            map_memory: MapMemory::default(),
+            memory: MapMemory::default(),
+            last_rect: Rect::new(Coord::zero(), Coord::zero()),
         }
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui) {
-        ui.add(
-            Map::new(
-                Some(&mut self.tiles),
-                &mut self.map_memory,
-                lat_lon(53.21881846, 6.56784254),
-            )
-            .pull_to_my_position_threshold(10.)
-            .zoom_with_ctrl(false),
-        );
+    pub fn show(&mut self, ui: &mut egui::Ui, db: &Database) {
+        Map::new(Some(&mut self.tiles), &mut self.memory, lat_lon(53.21881846, 6.56784254))
+            .with_plugin(StopsPlugin { db })
+            .zoom_with_ctrl(false)
+            .show(ui, |_ui, response, projector, _map_memory| {
+                let min = projector.unproject(Vec2::ZERO);
+                let max = projector.unproject(response.rect.size());
+
+                self.last_rect = Rect::new(min, max);
+            });
+    }
+
+    pub fn viewport_rect(&self) -> Rect {
+        self.last_rect
     }
 }
