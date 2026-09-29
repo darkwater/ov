@@ -1,12 +1,14 @@
 use std::sync::{OnceLock, mpsc};
 
-use rovapi_models::Stop;
+use rovapi_models::{Stop, StopGroup, StopGroupDetails};
 
 static CHANNEL: OnceLock<(mpsc::Sender<Message>, egui::Context)> = OnceLock::new();
 
 #[must_use]
 pub enum Message {
     FetchedStops(Vec<Stop>),
+    FetchedStopGroups(Vec<StopGroup>),
+    FetchedStopGroupDetails(StopGroupDetails),
 }
 
 impl Message {

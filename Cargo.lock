@@ -3735,7 +3735,7 @@ dependencies = [
 [[package]]
 name = "rovapi-models"
 version = "0.1.0"
-source = "git+https://github.com/darkwater/rovapi#d85f2f43e21c2b3dc8605cb33e5b706955e36b7b"
+source = "git+https://github.com/darkwater/rovapi#d128cc093c08be122d9f09ab87b94eec02e919f9"
 dependencies = [
  "geo-types",
  "serde",

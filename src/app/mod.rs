@@ -1,15 +1,19 @@
 mod db;
 mod map;
 mod message;
+mod selection;
 
 use std::sync::mpsc;
 
-use self::{db::Database, map::MapView, message::Message};
+use egui::Frame;
+
+use self::{db::Database, map::MapView, message::Message, selection::Selection};
 
 pub struct OvApp {
     map: MapView,
     db: Database,
     messages: mpsc::Receiver<Message>,
+    selection: Selection,
 }
 
 impl OvApp {
@@ -21,6 +25,7 @@ impl OvApp {
             map: MapView::new(cc.egui_ctx.clone()),
             db: Database::default(),
             messages: Message::init(cc.egui_ctx.clone()),
+            selection: Selection::default(),
         }
     }
 }
@@ -31,6 +36,14 @@ impl eframe::App for OvApp {
             match message {
                 Message::FetchedStops(stops) => {
                     self.db.add_stops(stops);
+                }
+                Message::FetchedStopGroups(stop_groups) => {
+                    self.db.add_stop_groups(stop_groups);
+                }
+                Message::FetchedStopGroupDetails(stop_group_details) => {
+                    self.db
+                        .stop_group_details
+                        .insert(stop_group_details.group.id.clone(), stop_group_details);
                 }
             }
         }
@@ -46,32 +59,56 @@ impl eframe::App for OvApp {
                     let max_lon = self.map.viewport_rect().max().x;
 
                     let req = ehttp::Request::get(
-                        String::from("http://192.168.0.106:4941/v1/stops/in-rect")
+                        String::from("http://192.168.0.106:4941/v1/stop-groups/in-rect")
                             + &format!("?min_lat={min_lat}&min_lon={min_lon}")
                             + &format!("&max_lat={max_lat}&max_lon={max_lon}&limit=25000"),
                     );
                     ehttp::fetch(req, |response| {
                         let stops = response
-                            .expect("stops error")
+                            .expect("stop groups error")
                             .json()
-                            .expect("stops json error");
+                            .expect("stop groups json error");
 
-                        Message::FetchedStops(stops).send();
+                        Message::FetchedStopGroups(stops).send();
                     });
                 }
             });
         });
 
-        egui::Panel::right("right panel").show(ui, |ui| {
-            ui.heading("Stops");
-            for stop in self.db.stops.values() {
-                ui.label(format!("{} ({})", stop.name, stop.source_id));
-            }
-        });
+        if let Some(details) = self.selection.stop_group_details(&self.db) {
+            egui::Panel::right("right panel").show(ui, |ui| {
+                ui.heading(&details.group.name);
+                ui.label(format!("ID: {}", details.group.id));
 
-        egui::CentralPanel::default().show(ui, |ui| {
-            self.map.show(ui, &self.db);
-        });
+                ui.heading("Members");
+                for member in &details.members {
+                    let stop = &member.location;
+                    ui.label(format!("Name: {}", stop.name));
+                    ui.label(
+                        member
+                            .route_ids
+                            .iter()
+                            .fold(String::from("Routes:"), |acc, route_id| {
+                                acc + &format!(" {route_id}")
+                            }),
+                    );
+                    ui.label(
+                        member
+                            .agency_ids
+                            .iter()
+                            .fold(String::from("Agencies:"), |acc, route_id| {
+                                acc + &format!(" {route_id}")
+                            }),
+                    );
+                }
+            });
+        }
+
+        egui::CentralPanel::default()
+            .frame(Frame::NONE)
+            .show(ui, |ui| {
+                self.map.show(ui, &self.db, &mut self.selection);
+            });
     }
 
     fn save(&mut self, _storage: &mut dyn eframe::Storage) {
